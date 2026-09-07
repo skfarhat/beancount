@@ -199,16 +199,16 @@ func executeGrouped(rows []*Row, compiled *Compiled) [][]any {
 }
 
 // orderRows sorts rows by the ORDER-BY target values. The sort is stable so
-// ties keep their natural (ledger) order, and a single direction applies to
-// the whole key list, matching the official grammar.
+// ties keep their natural (ledger) order, and each key applies its own
+// ASC/DESC direction (compiled.OrderDesc, parallel to OrderBy).
 func orderRows(output [][]any, compiled *Compiled) [][]any {
 	if len(compiled.OrderBy) == 0 {
 		return output
 	}
 	slices.SortStableFunc(output, func(a, b []any) int {
-		for _, idx := range compiled.OrderBy {
+		for i, idx := range compiled.OrderBy {
 			if cmp := compareValues(a[idx], b[idx]); cmp != 0 {
-				if compiled.OrderDesc {
+				if i < len(compiled.OrderDesc) && compiled.OrderDesc[i] {
 					return -cmp
 				}
 				return cmp

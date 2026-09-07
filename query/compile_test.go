@@ -216,7 +216,7 @@ func TestCompileOrderByMatchesTarget(t *testing.T) {
 
 	assert.Equal(t, 2, len(compiled.Targets))
 	assert.Equal(t, []int{1}, compiled.OrderBy)
-	assert.True(t, compiled.OrderDesc)
+	assert.Equal(t, []bool{true}, compiled.OrderDesc)
 }
 
 func TestCompileAggregateInWhere(t *testing.T) {

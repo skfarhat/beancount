@@ -127,6 +127,13 @@ var functions = map[string]*funcDef{
 			return &ast.Date{Time: time.Date(d.Year(), d.Month(), 1, 0, 0, 0, 0, time.UTC)}
 		}},
 	}},
+	// yearmonth is the Python beanquery name for ymonth (date → first of month).
+	"yearmonth": {overloads: []funcOverload{
+		{[]DType{TDate}, TDate, func(_ *Row, args []any) any {
+			d := args[0].(*ast.Date)
+			return &ast.Date{Time: time.Date(d.Year(), d.Month(), 1, 0, 0, 0, 0, time.UTC)}
+		}},
+	}},
 	"today": {overloads: []funcOverload{
 		{[]DType{}, TDate, func(_ *Row, _ []any) any {
 			now := time.Now()
@@ -498,6 +505,30 @@ var functions = map[string]*funcDef{
 			}
 			if row.Txn != nil {
 				return metaLookup(row.Txn.Metadata, key)
+			}
+			return nil
+		}},
+	}},
+	// open_meta(account) returns the metadata attached to the account's Open
+	// directive (as []*ast.Metadata); index it with getitem, matching Python.
+	"open_meta": {overloads: []funcOverload{
+		{[]DType{TString}, TAny, func(row *Row, args []any) any {
+			if row.Ctx == nil || row.Ctx.Ledger == nil {
+				return nil
+			}
+			acct, ok := row.Ctx.Ledger.GetAccount(args[0].(string))
+			if !ok {
+				return nil
+			}
+			return acct.Metadata
+		}},
+	}},
+	// getitem(container, key) indexes a metadata mapping by key. Used as
+	// getitem(open_meta(account), 'bucket'); returns NULL when absent.
+	"getitem": {overloads: []funcOverload{
+		{[]DType{TAny, TString}, TAny, func(_ *Row, args []any) any {
+			if m, ok := args[0].([]*ast.Metadata); ok {
+				return metaLookup(m, args[1].(string))
 			}
 			return nil
 		}},

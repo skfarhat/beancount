@@ -431,7 +431,15 @@ func (p *Parser) parseDirective() (ast.Directive, error) {
 	// Check that next token is properly separated from date (whitespace required)
 	nextTok := p.peek()
 	if nextTok.Line == dateTok.Line && nextTok.Column == dateTok.Column+dateTok.Len() {
-		return nil, p.errorAtToken(nextTok, "whitespace required between date and directive")
+		// Python beancount tolerates a transaction flag glued to the date,
+		// e.g. "2023-04-28* \"payee\"". Only a keyword directive glued to the
+		// date (e.g. "2024-01-01open") stays an error.
+		switch nextTok.Type {
+		case ASTERISK, EXCLAIM, FLAG, TXN:
+			// allowed — flag directly follows the date
+		default:
+			return nil, p.errorAtToken(nextTok, "whitespace required between date and directive")
+		}
 	}
 
 	// Capture position from directive keyword token

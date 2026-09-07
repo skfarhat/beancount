@@ -37,9 +37,10 @@ type Select struct {
 	Where    Expr
 	GroupBy  []Expr // column names, aliases, or 1-based integer indices
 	OrderBy  []Expr
-	// OrderDesc applies to the whole ORDER BY list; the official grammar
-	// accepts a single trailing ASC or DESC, not one per term.
-	OrderDesc bool
+	// OrderDesc holds the sort direction per ORDER BY term (parallel to
+	// OrderBy): true = DESC, false = ASC. Each term may carry its own ASC/DESC,
+	// matching Python beanquery (`ORDER BY a, b DESC` = a ASC, b DESC).
+	OrderDesc []bool
 	PivotBy   []Expr
 	Limit     *int64
 }

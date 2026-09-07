@@ -45,7 +45,7 @@ type Compiled struct {
 	From      *CompiledFrom
 	GroupBy   []int
 	OrderBy   []int
-	OrderDesc bool
+	OrderDesc []bool // per ORDER BY key, parallel to OrderBy
 	PivotBy   []int
 	Limit     *int64
 	Distinct  bool
@@ -225,13 +225,17 @@ func (c *compiler) resolveGroupBy(sel *bql.Select, compiled *Compiled) error {
 // hidden targets as needed. A single trailing direction applies to the
 // whole list.
 func (c *compiler) resolveOrderBy(sel *bql.Select, compiled *Compiled) error {
-	compiled.OrderDesc = sel.OrderDesc
-	for _, item := range sel.OrderBy {
+	for i, item := range sel.OrderBy {
 		idx, err := c.resolveTargetRef(item, compiled, true)
 		if err != nil {
 			return err
 		}
 		compiled.OrderBy = append(compiled.OrderBy, idx)
+		desc := false
+		if i < len(sel.OrderDesc) {
+			desc = sel.OrderDesc[i]
+		}
+		compiled.OrderDesc = append(compiled.OrderDesc, desc)
 	}
 	return nil
 }

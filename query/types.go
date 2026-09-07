@@ -279,6 +279,21 @@ func asDecimal(v any) (decimal.Decimal, bool) {
 		return decimal.NewFromInt(val), true
 	case decimal.Decimal:
 		return val, true
+	case *Amount:
+		return val.Number, true
+	case Amount:
+		return val.Number, true
+	case *Inventory:
+		// A single-currency inventory (what CONVERT to one currency yields)
+		// compares by its amount; an empty one is zero. Multi-currency
+		// inventories are not scalar-comparable, so fall through.
+		ps := val.Positions()
+		switch len(ps) {
+		case 0:
+			return decimal.Zero, true
+		case 1:
+			return ps[0].Units.Number, true
+		}
 	}
 	return decimal.Decimal{}, false
 }

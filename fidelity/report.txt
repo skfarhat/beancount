@@ -1,0 +1,79 @@
+Fidelity report — /Users/sami/d/code/sf-money/beanfiles/money.bean
+queries: 24
+MATCH=23  MISMATCH=1  GO_ERROR=0  PY_ERROR=0  BOTH_ERROR=0
+
+[MATCH] wealth_total
+    SELECT CONVERT(SUM(position), 'EUR') as total_wealth WHERE account ~ "Assets:" AND not account ~ "Assets:RealEstate"
+
+[MATCH] wealth_eur
+    SELECT CONVERT(SUM(position), 'EUR') as eur_value WHERE account ~ "Assets:" AND not account ~ "Assets:RealEstate"
+
+[MATCH] wealth_usd
+    SELECT SUM(position) as usd_value WHERE account ~ "Assets:" AND currency = "USD"
+
+[MATCH] wealth_gbp
+    SELECT SUM(position) as gbp_value WHERE account ~ "Assets:" AND currency = "GBP"
+
+[MATCH] balances_by_account
+    SELECT account, CONVERT(SUM(position), 'EUR') as balance WHERE account ~ "Assets:" GROUP BY account ORDER BY account
+
+[MATCH] assets_last_update
+    SELECT account, CONVERT(sum(position), 'EUR') as balance, last(date) as last_update WHERE account ~ '^Assets' AND NOT account ~ '^Assets:RealEstate' GROUP BY account
+
+[MATCH] invest_non_stocks
+    SELECT account, CONVERT(sum(position), 'EUR') as balance WHERE account ~ '^Assets:Invest:' AND NOT account ~ ':Stocks:' AND NOT account = 'Assets:Invest:Revolut:InvestWallet' GROUP BY account
+
+[MATCH] stock_positions
+    SELECT account, currency(units(position)) as ticker, number(units(position)) as shares, number(cost(position)) as cost_basis WHERE account ~ '^Assets:Invest:Stocks' ORDER BY account
+
+[MATCH] uncategorised_count
+    SELECT COUNT(*) as count WHERE account ~ "Expenses:Uncategorised" OR account ~ "Expenses:Uncategorized"
+
+[MATCH] liabilities_payments
+    SELECT date, account, payee, CONVERT(position, 'EUR') as payment_amount, narration WHERE account ~ "^Liabilities:" AND number > 0 ORDER BY date DESC LIMIT 500
+
+[MATCH] recent_expenses_90d
+    SELECT payee, CONVERT(position, 'EUR') as amount WHERE account ~ '^Expenses:' AND date >= date_add(today(), -90)
+
+[MATCH] expenses_yearly_by_root
+    SELECT root(account, 2) AS account, year(date) as date, CONVERT(SUM(position), 'EUR') as value WHERE account ~ '^Expenses:' AND NOT "exclude" IN tags AND year(date) >= 2020 GROUP BY account, date ORDER BY date, value DESC
+
+[MATCH] food_monthly
+    SELECT root(account, 2) AS account, yearmonth(date) as date, CONVERT(SUM(position), 'EUR') AS value WHERE (account ~ 'Expenses:Groceries' OR account ~ 'Expenses:Restaurants') AND NOT "exclude" IN tags AND year(date) >= 2020 GROUP BY account, date ORDER BY date DESC, account
+
+[MISMATCH] expenses_monthly_root
+    SELECT root(account, 2) AS account, yearmonth(date) as date, CONVERT(SUM(position), 'EUR') AS value WHERE account ~ '^Expenses:' AND NOT "exclude" IN tags AND year(date) >= 2020 GROUP BY account, date ORDER BY date DESC, value DESC
+    row 202 col 0 (account): py='Expenses:Reimbursable' go='Expenses:Invest'
+    row 202 col 2 (value (EUR)): py='-55.69' go=''
+    row 203 col 0 (account): py='Expenses:Invest' go='Expenses:Reimbursable'
+    row 203 col 2 (value (EUR)): py='' go='-55.6900000000000000000000000000000'
+
+[MATCH] expenses_last_365d
+    SELECT root(account, 2) AS account, yearmonth(date) as month, CONVERT(SUM(position), 'EUR') AS amount WHERE account ~ '^Expenses:' AND NOT "exclude" IN tags AND date >= date_add(today(), -365) GROUP BY account, month ORDER BY month DESC
+
+[MATCH] income_monthly
+    SELECT year, month, CONVERT(SUM(position), 'EUR') AS value WHERE account ~ '^Income' AND year(date) >= 2020 GROUP BY year, month ORDER BY year DESC, month DESC
+
+[MATCH] expenses_monthly_ym
+    SELECT year, month, CONVERT(SUM(position), 'EUR') AS value WHERE account ~ '^Expenses' AND year(date) >= 2020 GROUP BY year, month ORDER BY year DESC, month DESC
+
+[MATCH] balance_series_account
+    SELECT yearmonth(date) as date, CONVERT(balance, 'EUR') as balance WHERE account = "Assets:Boursorama:Checking" ORDER BY date ASC
+
+[MATCH] networth_buckets
+    SELECT account, getitem(open_meta(account), 'bucket') AS bucket, CONVERT(SUM(position), 'EUR', 2025-12-31) AS amt WHERE account ~ '^Assets:' AND date <= 2025-12-31 GROUP BY account, bucket ORDER BY account
+
+[MATCH] probe_root
+    SELECT root(account, 2) as r, COUNT(*) as n WHERE account ~ '^Expenses:' GROUP BY r ORDER BY r
+
+[MATCH] probe_yearmonth
+    SELECT yearmonth(date) as ym, COUNT(*) as n WHERE account ~ '^Expenses:' AND year(date) >= 2024 GROUP BY ym ORDER BY ym
+
+[MATCH] probe_open_meta
+    SELECT account, getitem(open_meta(account), 'bucket') as bucket WHERE account ~ '^Assets:' GROUP BY account, bucket ORDER BY account
+
+[MATCH] probe_tags_exclude
+    SELECT COUNT(*) as n WHERE account ~ '^Expenses:' AND NOT "exclude" IN tags
+
+[MATCH] probe_date_add_today
+    SELECT COUNT(*) as n WHERE date >= date_add(today(), -365)

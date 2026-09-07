@@ -33,9 +33,10 @@ func desugarBalances(b *bql.Balances) *bql.Select {
 			{Expr: account},
 			{Expr: call("sum", summarize(b.Summary, &bql.Ident{Name: "position"}))},
 		},
-		From:    b.From,
-		GroupBy: []bql.Expr{account},
-		OrderBy: []bql.Expr{call("account_sortkey", account)},
+		From:      b.From,
+		GroupBy:   []bql.Expr{account},
+		OrderBy:   []bql.Expr{call("account_sortkey", account)},
+		OrderDesc: []bool{false},
 	}
 }
 

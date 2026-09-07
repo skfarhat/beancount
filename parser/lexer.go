@@ -771,6 +771,13 @@ func (l *Lexer) shouldSkipNonDirectiveLine() bool {
 	if len(remaining) >= 2 && remaining[0] == '#' && remaining[1] == '+' {
 		return true
 	}
+	// A '#' that begins a line and is followed by whitespace (e.g. a
+	// commented-out "# 2026-07-11 * ...") is an org-mode/ignored line in
+	// beancount, not a transaction flag. Match the '! & ? %' handling below.
+	// ('#tag' at BOL is left to the tag lexer, as beancount does.)
+	if remaining[0] == '#' {
+		return len(remaining) > 1 && (remaining[1] == ' ' || remaining[1] == '\t')
+	}
 	if remaining[0] == '!' || remaining[0] == '&' || remaining[0] == '?' || remaining[0] == '%' {
 		return len(remaining) > 1 && (remaining[1] == ' ' || remaining[1] == '\t')
 	}

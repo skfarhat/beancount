@@ -162,15 +162,24 @@ func (p *parser) parseSelect() (*Select, error) {
 		if _, err := p.expect(BY, "ORDER BY"); err != nil {
 			return nil, err
 		}
-		exprs, err := p.parseExprList()
-		if err != nil {
-			return nil, err
-		}
-		sel.OrderBy = exprs
-		if p.accept(DESC) {
-			sel.OrderDesc = true
-		} else {
-			p.accept(ASC)
+		// Each term carries its own optional ASC/DESC (Python semantics), so
+		// parse the list here rather than via parseExprList + one trailing dir.
+		for {
+			expr, err := p.parseExpr()
+			if err != nil {
+				return nil, err
+			}
+			desc := false
+			if p.accept(DESC) {
+				desc = true
+			} else {
+				p.accept(ASC)
+			}
+			sel.OrderBy = append(sel.OrderBy, expr)
+			sel.OrderDesc = append(sel.OrderDesc, desc)
+			if !p.accept(COMMA) {
+				break
+			}
 		}
 	}
 
@@ -538,7 +547,14 @@ func (p *parser) parsePrimary() (Expr, error) {
 		}
 		p.next() // (
 		call := &Call{position: position{p.pos(tok)}, Func: name}
-		if p.cur.Type != RPAREN {
+		if p.cur.Type == ASTERISK {
+			// COUNT(*): the star counts every row. count() already counts all
+			// rows including NULLs, so desugar the star to the constant 1 —
+			// COUNT(1) == COUNT(*), matching Python beanquery.
+			star := p.cur
+			p.next()
+			call.Args = []Expr{&Int{position: position{p.pos(star)}, Value: 1}}
+		} else if p.cur.Type != RPAREN {
 			args, err := p.parseExprList()
 			if err != nil {
 				return nil, err

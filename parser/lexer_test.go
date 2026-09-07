@@ -759,14 +759,19 @@ func TestBeancountV2CharacterClasses(t *testing.T) {
 }
 
 func TestTransactionFlagTokens(t *testing.T) {
-	lexer := NewLexer([]byte("# & ? % P S T C U R M"), "test.beancount")
+	// Flag characters lex as FLAG in flag position (after a date). '#' must not
+	// lead the line here: at BOL, "# " is an ignored org-mode line, not a flag
+	// (see TestIgnoredNonDirectiveLineStarts), matching Python beancount.
+	lexer := NewLexer([]byte("2000-01-01 # & ? % P S T C U R M"), "test.beancount")
 	tokens, err := lexer.ScanAll()
 	assert.NoError(t, err)
-	assert.Equal(t, []TokenType{FLAG, FLAG, FLAG, FLAG, FLAG, FLAG, FLAG, FLAG, FLAG, FLAG, FLAG, EOF}, tokenTypes(tokens))
+	assert.Equal(t, []TokenType{DATE, FLAG, FLAG, FLAG, FLAG, FLAG, FLAG, FLAG, FLAG, FLAG, FLAG, FLAG, EOF}, tokenTypes(tokens))
 }
 
 func TestIgnoredNonDirectiveLineStarts(t *testing.T) {
-	source := []byte(":PROPERTIES:\n#+options: toc:nil\n! note\nS generated heading\n2000-01-01 open Assets:Cash USD\n")
+	// A leading '#' followed by whitespace is a commented-out / org-mode line
+	// (beancount ignores it); '#+drawer' and '#tag' cases are covered too.
+	source := []byte(":PROPERTIES:\n#+options: toc:nil\n! note\nS generated heading\n# 2026-07-11 * \"commented out\"\n2000-01-01 open Assets:Cash USD\n")
 	lexer := NewLexer(source, "test.beancount")
 	tokens, err := lexer.ScanAll()
 	assert.NoError(t, err)

@@ -43,7 +43,7 @@ func TestParseSelectCaseInsensitiveKeywords(t *testing.T) {
 	assert.NotZero(t, sel.Where)
 	assert.Equal(t, 1, len(sel.GroupBy))
 	assert.Equal(t, 1, len(sel.OrderBy))
-	assert.True(t, sel.OrderDesc)
+	assert.Equal(t, []bool{true}, sel.OrderDesc)
 	assert.Equal(t, int64(10), *sel.Limit)
 }
 
@@ -206,17 +206,20 @@ func TestParseGroupByIndexAndName(t *testing.T) {
 }
 
 func TestParseOrderByList(t *testing.T) {
-	// The official grammar accepts a single trailing ASC/DESC that applies
-	// to the whole ORDER BY list, not one direction per term.
+	// Each ORDER BY term carries its own optional ASC/DESC, matching Python
+	// beanquery: "date, account DESC" = date ASC, account DESC.
 	stmt, err := Parse("SELECT * ORDER BY date, account DESC")
 	assert.NoError(t, err)
 
 	sel := stmt.(*Select)
 	assert.Equal(t, 2, len(sel.OrderBy))
-	assert.True(t, sel.OrderDesc)
+	assert.Equal(t, []bool{false, true}, sel.OrderDesc)
 
-	_, err = Parse("SELECT * ORDER BY date DESC, account ASC")
-	assert.Error(t, err)
+	// Mixed per-term directions are valid.
+	stmt, err = Parse("SELECT * ORDER BY date DESC, account ASC")
+	assert.NoError(t, err)
+	sel = stmt.(*Select)
+	assert.Equal(t, []bool{true, false}, sel.OrderDesc)
 }
 
 func TestParsePivotBy(t *testing.T) {
