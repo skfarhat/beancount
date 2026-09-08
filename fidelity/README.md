@@ -1,5 +1,33 @@
 # Fidelity harness — Python beanquery vs this Go fork
 
+## Two harnesses here
+
+- **`differential.py` (v3, runs in CI)** — diffs the Go engine against official
+  **beancount 3.x** (`beanquery`) over a curated suite (`v3/`) plus the repo's
+  compliance query corpus, with a semantic comparator (compares by column
+  position, numeric tolerance, order-aware). This is the standing correctness
+  gate: the reference tool is the oracle, so every push is checked against real
+  beancount v3 behavior (`.github/workflows/differential.yml`). Run locally:
+  `BEAN_QUERY=/path/to/bean-query python3 fidelity/differential.py`.
+  Current: **12/12 curated + 24 compliance MATCH**.
+  - The curated `v3/` suite exercises exactly the locally-patched features —
+    CONVERT chains, `COUNT(*)`, per-term `ORDER BY`, `yearmonth`,
+    `open_meta`/`getitem`, cost lots, 3-arg `CONVERT`.
+  - Known v2/v3 divergences skipped (see `COMPLIANCE_SKIP`): PRINT/JOURNAL/
+    BALANCES shortcuts (formatter output, not tabular), `select_star` (column
+    set), and `any_meta()` (a v2 function v3 lacks).
+  - **Engine gap noted while building the v3 ledger:** the Go engine does not
+    elaborate a single blank posting across *multiple* currencies the way v3
+    does (an edge case our real ledgers never hit — every txn balances in one
+    currency). The fixture uses explicit per-currency legs.
+
+- **`run.py` (real ledger)** — diffs against the *real* sf-money ledger and the
+  actual cortex `finance_connect.go` queries. Documented below.
+
+---
+
+# run.py — Python beanquery vs this Go fork (real ledger)
+
 Proves whether this Go fork can stand in for Python `beancount`/`beanquery` on
 **Sami's real ledger** (`~/d/code/sf-money/beanfiles/money.bean`), which is the
 gate for porting cortex's Finance layer off Python (see

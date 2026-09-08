@@ -1,0 +1,77 @@
+option "title" "v3 differential fixture ledger"
+option "operating_currency" "EUR"
+
+; Accounts carry a bucket: open-meta so open_meta(account) / getitem(...) can be
+; exercised. Multiple currencies (EUR/USD/ACME) with a price chain exercise
+; CONVERT; #exclude tags exercise `NOT "exclude" IN tags`; cost lots exercise
+; units()/number()/cost(); RealEstate exercises the `NOT account ~ RealEstate`
+; filter cortex uses for net worth.
+
+2022-12-31 open Assets:Bank:EUR EUR
+  bucket: "Cash"
+2022-12-31 open Assets:Bank:USD USD
+  bucket: "Cash"
+2022-12-31 open Assets:Invest:Stocks:ACME ACME
+  bucket: "Investments"
+2022-12-31 open Assets:RealEstate:Flat EUR
+  bucket: "RealEstate"
+2022-12-31 open Income:Salary EUR
+2022-12-31 open Income:Gains USD
+2022-12-31 open Expenses:Food:Groceries EUR
+2022-12-31 open Expenses:Food:Restaurant EUR
+2022-12-31 open Expenses:Travel EUR
+2022-12-31 open Equity:Opening
+
+2023-01-01 price USD 0.90 EUR
+2023-01-01 price ACME 100.00 USD
+
+; Explicit per-currency Equity legs: the Go engine does not yet elaborate a
+; single blank posting across multiple currencies the way beancount v3 does
+; (an edge case our real ledger never hits, since every txn balances in one
+; currency). Kept explicit so the fixture loads identically in both engines.
+2023-01-02 * "Opening balances"
+  Assets:Bank:EUR         5000.00 EUR
+  Assets:RealEstate:Flat 250000.00 EUR
+  Equity:Opening        -255000.00 EUR
+  Assets:Bank:USD         2000.00 USD
+  Equity:Opening          -2000.00 USD
+
+2023-01-15 * "Acme" "January salary" #salary
+  Assets:Bank:EUR   2500.00 EUR
+  Income:Salary
+
+2023-02-10 * "Carrefour" "Groceries" #food
+  Expenses:Food:Groceries   80.00 EUR
+  Assets:Bank:EUR
+
+2023-02-20 * "Bistro" "Dinner out" #food #exclude
+  Expenses:Food:Restaurant   60.00 EUR
+  Assets:Bank:EUR
+
+2023-03-01 * "Broker" "Buy ACME"
+  Assets:Invest:Stocks:ACME   10 ACME {100.00 USD}
+  Assets:Bank:USD   -1000.00 USD
+
+2023-04-12 * "Airline" "Flight" #trip
+  Expenses:Travel   450.00 EUR
+  Assets:Bank:EUR
+
+2023-11-05 * "Carrefour" "Groceries" #food
+  Expenses:Food:Groceries   95.00 EUR
+  Assets:Bank:EUR
+
+2024-01-15 * "Acme" "January salary" #salary
+  Assets:Bank:EUR   2600.00 EUR
+  Income:Salary
+
+2024-03-20 * "Broker" "Sell some ACME"
+  Assets:Invest:Stocks:ACME   -3 ACME {100.00 USD} @ 130.00 USD
+  Assets:Bank:USD   390.00 USD
+  Income:Gains
+
+2024-05-02 * "Bistro" "Dinner" #food
+  Expenses:Food:Restaurant   72.00 EUR
+  Assets:Bank:EUR
+
+2024-06-30 price USD 0.92 EUR
+2024-06-30 price ACME 130.00 USD
